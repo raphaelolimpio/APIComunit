@@ -1,76 +1,41 @@
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from .models import models
+from .api.db.database import engine
+from .models import models as user_models
+from .api.models import modelsTerm as term_models
+
+# Roteadores
 from .config import auth
-from .api.db.database import engine, get_db
+from .routers import chat, chatGrupo, comments, call
+from .api import main as term_api
 
-models.Base.metadata.create_all(bind=engine)
+# Criação de todas as tabelas
+user_models.Base.metadata.create_all(bind=engine)
+term_models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Dev Comunity API")
+app = FastAPI(
+    title="Comunit API - Rede Dev",
+    description="Backend para termos técnicos, comunidade, chats e calls.",
+    version="1.0.0"
+)
 
-class GoogleAuthRequest(BaseModel):
-    id_token: str
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class FCMTokenRequest(BaseModel):
-    fcm_token: int
+# Conexão de todas as rotas
+app.include_router(auth.router)                                    # /auth/google, /usuarios/me
+app.include_router(term_api.router, prefix="/termos", tags=["Termos"]) # /termos/...
+app.include_router(comments.router)                                # /comentarios/...
+app.include_router(chat.router)                                    # /conversas/...
+app.include_router(chatGrupo.router)                               # /grupos/...
+app.include_router(call.router)                                    # /calls/...
 
-@app.post("/auth/google")
-def login_google(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
-    google_data = auth.verificar_google_token(payload.id_token)
-
-    google_id = google_data["sub"]
-    email = google_data["email"]
-    nome = google_data.get("name", "Dev Anônimo")
-    foto = google_data.get("picture", "")
-
-    usuario = db.query(models.Usuario).filter(models.Usuario.google_id == google_id).first()
-    if not usuario:
-        usuario = models.Usuario(
-            google_id=google_id,
-            email=email,
-            nome=nome,
-            foto_url=foto
-        )
-        db.add(usuario)
-        db.commit()
-        db.refresh(usuario)
-
-    token_jwt = auth.criar_acess_token({"sub": str(usuario.id)})
-
-    return {
-        "acess_token": token_jwt,
-        "token_type": "bearer",
-        "usuario": {
-            "id": usuario.id,
-            "nome": usuario.nome,
-            "email": usuario.email,
-            "foto_url": usuario.foto_url
-        }
-    }
-
-@app.get("/usuarios/me")
-def meu_perfil(usuario: models.Usuario = Depends(auth.obter_usuario_logado)):
-    return {
-        "id": usuario.id,
-        "nome": usuario.nome,
-        "email": usuario.email,
-        "foto_url": usuario.foto_url,
-        "bio": usuario.bio,
-        "total_termos": len(usuario.termos),
-        "total_explicacoes": len(usuario.explicacoes),
-        "total_snippets": len(usuario.snippets),
-
-    }
-
-@app.post("/usuarios/me/fcm-token")
-def atualizar_fcm_token(
-    payload: FCMTokenRequest,
-    usuario: models.Usuario = Depends(auth.obter_usuario_logado),
-    db: Session = Depends(get_db)
-):
-    usuario.fcm_token = payload.fcm_token
-    db.commit()
-    return {"status": "token atualizado"}
+@app.get("/", tags=["Healthcheck"])
+def health_check():
+    return {"status": "online", "service": "Comunit API"}
