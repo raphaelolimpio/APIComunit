@@ -5,7 +5,7 @@ from typing import Optional
 
 from .models import models
 from .config import auth
-from ..api.db.database import engine, get_db
+from .api.db.database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 

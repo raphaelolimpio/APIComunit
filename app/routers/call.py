@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..models import models
 from ..config import auth
-from ...api.db.database import get_db
+from ..api.db.database import get_db
 
 router = APIRouter(prefix="/calls", tags=["Video chamada"])
 

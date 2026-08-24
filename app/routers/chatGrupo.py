@@ -7,7 +7,7 @@ from jose import jwt, JWTError
 
 from ..config import auth
 from ..models import models
-from ...api.db.database import get_db
+from ..api.db.database import get_db
 from ..chat_manager import manager
 
 

@@ -7,7 +7,7 @@ from google.auth.transport import requests as google_requests
 from sqlalchemy.orm import Session
 
 from ..models import models
-from ...api.db.database import get_db
+from ..api.db.database import get_db
 
 
 SECRET_KEY = "SUA_CHAVE_SUPER_SECRETA_MUDE_EM_PROD"

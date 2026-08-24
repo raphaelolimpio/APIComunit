@@ -5,9 +5,9 @@ from typing import Optional, List
 from datetime import datetime
 
 from ..models import models
-from ...api.models import modelsTerm
+from ..api.models import modelsTerm
 from ..config import auth
-from ...api.db.database import get_db
+from ..api.db.database import get_db
 
 router = APIRouter(prefix="/comentarios", tags=["Comentarios"])
 

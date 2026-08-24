@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Table
 from sqlalchemy.orm import relationship
-from ...api.db.database import Base
+from ..api.db.database import Base
 
 conversa_membros = Table(
     "conversa_membro",

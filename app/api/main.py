@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from . import schemas
+from ..api import schemas
 from .db.database import engine, get_db
 from .models import modelsTerm
 
