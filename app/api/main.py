@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 
 from ..api import schemas
@@ -8,12 +9,22 @@ from .models import modelsTerm
 
 modelsTerm.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="Dev Community Dictionary API",
-    description="API colaborativa para termos tecnicos e snippets de codigo"
-) 
+router = APIRouter()
 
-@app.post("/termos/", response_model=schemas.TermosResponse, status_code=201)
+@router.get("/topicos")
+def listar_topicos(db: Session = Depends(get_db)):
+    topicos = (
+        db.query(
+            modelsTerm.Termo.categoria.label("categoria"),
+            func.count(modelsTerm.Termo.id).label("total_termos")
+        )
+        .group_by(modelsTerm.Termo.categoria)
+        .all()
+    )
+    return [{"categoria": t.categoria, "total_termos": t.total_termos} for t in topicos]
+
+
+@router.post("/termos/", response_model=schemas.TermosResponse, status_code=201)
 def criar_termo(termo: schemas.TermosCreate, db: Session = Depends(get_db)):
     db_termo = db.query(modelsTerm.Termo).filter(modelsTerm.Termo.titulo.ilike(termo.titulo)).first()
     if db_termo:
@@ -24,7 +35,7 @@ def criar_termo(termo: schemas.TermosCreate, db: Session = Depends(get_db)):
     db.refresh(novo_termo)
     return novo_termo
 
-@app.get("/termos/", response_model=List[schemas.TermosResponse])
+@router.get("/termos/", response_model=List[schemas.TermosResponse])
 def listar_termos(
     busca: Optional[str] = Query(None, description="Filtrar por nome ou catrgoria"),
     db: Session = Depends(get_db)
@@ -37,14 +48,14 @@ def listar_termos(
         )
     return query.all()
 
-@app.get("/termos/{termos_id}", response_model=schemas.TermosResponse)
+@router.get("/termos/{termos_id}", response_model=schemas.TermosResponse)
 def obter_termo(termo_id: int, db: Session = Depends(get_db)):
     db_termo = db.query(modelsTerm.Termo).filter(modelsTerm.Termo.id == termo_id).first()
     if not db_termo:
         raise HTTPException(status_code=404, detail="Termo não encontrado")
     return db_termo
 
-@app.post("termos/{termo_id}/explicacoes", response_model=schemas.ExplicacaoResponse, status_code=201)
+@router.post("termos/{termo_id}/explicacoes", response_model=schemas.ExplicacaoResponse, status_code=201)
 def adicionar_explicacao(termo_id: int, exp: schemas.ExplicacaoCreate, db: Session = Depends(get_db)):
     db_termo = db.query(modelsTerm.Termo).filter(modelsTerm.Termo.id == termo_id).first()
     if not db_termo:
@@ -55,7 +66,7 @@ def adicionar_explicacao(termo_id: int, exp: schemas.ExplicacaoCreate, db: Sessi
     db.refresh(nova_exp)
     return nova_exp
 
-@app.post("/explicacoes/{explicacoes_id}/like", response_model=schemas.ExplicacaoResponse)
+@router.post("/explicacoes/{explicacoes_id}/like", response_model=schemas.ExplicacaoResponse)
 def dar_like_explicacao(explicacao_id: int, db: Session = Depends(get_db)):
     exp = db.query(modelsTerm.Explicacao).filter(modelsTerm.Explicacao.id == explicacao_id).first()
     if not exp:
@@ -65,7 +76,7 @@ def dar_like_explicacao(explicacao_id: int, db: Session = Depends(get_db)):
     db.refresh(exp)
     return exp
 
-@app.post("/snippets/", response_model=schemas.SnipperResponse, status_code=201)
+@router.post("/snippets/", response_model=schemas.SnipperResponse, status_code=201)
 def criar_snipepet(snippet: schemas.SnipperResponse, db: Session = Depends(get_db)):
     if snippet.termo_id:
         db_termo = db.query(modelsTerm.Termo).filter(modelsTerm.Termo.id == snippet.termo_id).first()
@@ -77,14 +88,14 @@ def criar_snipepet(snippet: schemas.SnipperResponse, db: Session = Depends(get_d
         db.refresh(novo_snippet)
         return novo_snippet
 
-@app.get("/snippets/", response_model=List[schemas.SnipperResponse])
+@router.get("/snippets/", response_model=List[schemas.SnipperResponse])
 def listar_snippets(linguagem: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(modelsTerm.Snippet)
     if linguagem:
         query = query.filter(modelsTerm.Snippet.linguagem.ilike(linguagem))
     return query.order_by(modelsTerm.Snippet.upvotes.desc()).all()
 
-@app.post("/snippets/{snippet_id}/like", response_model=schemas.SnipperResponse)
+@router.post("/snippets/{snippet_id}/like", response_model=schemas.SnipperResponse)
 def dar_like_snippet(snippet_id: int, db: Session = Depends(get_db)):
     snip = db.query(modelsTerm.Snippet).filter(modelsTerm.Snippet.id == snippet_id).first()
     if not snip:

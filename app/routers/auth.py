@@ -1,23 +1,21 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 
 from ..models import models
 from ..config import auth
-from ..api.db.database import engine, get_db
+from ..api.db.database import get_db
 
-models.Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="Dev Comunity API")
+router = APIRouter(tags=["Autenticação & Usuários"])
 
 class GoogleAuthRequest(BaseModel):
     id_token: str
 
 class FCMTokenRequest(BaseModel):
-    fcm_token: int
+    fcm_token: str
 
-@app.post("/auth/google")
+@router.post("/auth/google")
 def login_google(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     google_data = auth.verificar_google_token(payload.id_token)
 
@@ -41,7 +39,7 @@ def login_google(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     token_jwt = auth.criar_acess_token({"sub": str(usuario.id)})
 
     return {
-        "acess_token": token_jwt,
+        "access_token": token_jwt,
         "token_type": "bearer",
         "usuario": {
             "id": usuario.id,
@@ -51,7 +49,7 @@ def login_google(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
         }
     }
 
-@app.get("/usuarios/me")
+@router.get("/usuarios/me")
 def meu_perfil(usuario: models.Usuario = Depends(auth.obter_usuario_logado)):
     return {
         "id": usuario.id,
@@ -59,13 +57,12 @@ def meu_perfil(usuario: models.Usuario = Depends(auth.obter_usuario_logado)):
         "email": usuario.email,
         "foto_url": usuario.foto_url,
         "bio": usuario.bio,
-        "total_termos": len(usuario.termos),
-        "total_explicacoes": len(usuario.explicacoes),
-        "total_snippets": len(usuario.snippets),
-
+        "total_termos": len(usuario.termos) if usuario.termos else 0,
+        "total_explicacoes": len(usuario.explicacoes) if usuario.explicacoes else 0,
+        "total_snippets": len(usuario.snippets) if usuario.snippets else 0,
     }
 
-@app.post("/usuarios/me/fcm-token")
+@router.post("/usuarios/me/fcm-token")
 def atualizar_fcm_token(
     payload: FCMTokenRequest,
     usuario: models.Usuario = Depends(auth.obter_usuario_logado),

@@ -6,8 +6,7 @@ from .models import models as user_models
 from .api.models import modelsTerm as term_models
 
 # Roteadores
-from .config import auth
-from .routers import chat, chatGrupo, comments, call
+from .routers import chat, chatGrupo, comments, call, auth
 from .api import main as term_api
 
 # Criação de todas as tabelas
@@ -29,7 +28,7 @@ app.add_middleware(
 )
 
 # Conexão de todas as rotas
-app.include_router(auth.router)                                    # /auth/google, /usuarios/me
+app.include_router(auth.router, tags=["Autenticação & Usuários"])                                    # /auth/google, /usuarios/me
 app.include_router(term_api.router, prefix="/termos", tags=["Termos"]) # /termos/...
 app.include_router(comments.router)                                # /comentarios/...
 app.include_router(chat.router)                                    # /conversas/...
